@@ -23,38 +23,42 @@ const reviewRouter = require("./routes/review.js");
 const userRouter = require("./routes/user.js");
 
 // ✅ DB URL
-const dbURL = process.env.ATLASDB_URL || "mongodb://127.0.0.1:27017/wanderlust";
+const dbURL =
+  process.env.ATLASDB_URL || "mongodb://127.0.0.1:27017/wanderlust";
 
 // ✅ MongoDB Connection
-mongoose.connect(dbURL)
-  .then(() => console.log(" DB Connected"))
-  .catch(err => console.log("❌ DB Error:", err));
+mongoose
+  .connect(dbURL)
+  .then(() => console.log("DB Connected"))
+  .catch((err) => console.log("DB Error:", err));
 
 // ✅ Mongo Store
 const store = MongoStore.create({
   mongoUrl: dbURL,
   crypto: {
-    secret: process.env.SECRET ,
+    secret: process.env.SECRET || "mysupersecret",
   },
   touchAfter: 24 * 60 * 60,
 });
 
 store.on("error", (e) => {
-  console.log(" Session Store Error", e);
+  console.log("Session Store Error", e);
 });
 
 // ✅ Session Config
-app.use(session({
-  store,
-  secret: process.env.SECRET ,
-  resave: false,
-  saveUninitialized: false, 
-  cookie: {
-    expires: Date.now() + 7 * 24 * 60 * 60 * 1000,
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-    httpOnly: true,
-  },
-}));
+app.use(
+  session({
+    store,
+    secret: process.env.SECRET || "mysupersecret",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      expires: Date.now() + 7 * 24 * 60 * 60 * 1000,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      httpOnly: true,
+    },
+  })
+);
 
 app.use(flash());
 
@@ -76,7 +80,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(methodOverride("_method"));
 app.use(express.static(path.join(__dirname, "public")));
 
-// ✅ Globals
+// ✅ Global Variables
 app.use((req, res, next) => {
   res.locals.success = req.flash("success");
   res.locals.error = req.flash("error");
@@ -84,24 +88,30 @@ app.use((req, res, next) => {
   next();
 });
 
+// ✅ Home Route (IMPORTANT FIX)
+app.get("/", (req, res) => {
+  res.redirect("/listings");
+});
+
 // ✅ Routes
 app.use("/listings", listingRouter);
-app.use("/listings/:id/reviews", reviewRouter); // mergeParams required
+app.use("/listings/:id/reviews", reviewRouter);
 app.use("/", userRouter);
 
-// ✅ 404 Handler (Express 5 FIX)
+// ✅ 404 Handler
 app.use((req, res, next) => {
   next(new ExpressError(404, "Page Not Found"));
 });
 
-// ✅ Error Handler
+// ✅ ✅ FIXED Error Handler
 app.use((err, req, res, next) => {
   let { statusCode = 500, message = "Something went wrong" } = err;
-  res.status(statusCode).render("error.ejs", { err });
+  console.log(err);
+  res.status(statusCode).render("error.ejs", { message });
 });
 
 // ✅ Server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(` Server running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
